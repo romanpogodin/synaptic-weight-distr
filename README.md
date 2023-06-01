@@ -1,3 +1,6 @@
+# Synaptic Weight Distributions Depend on the Geometry of Plasticity
+Paper: http://arxiv.org/abs/2305.19394
+
 # Setup (with conda)
 To install using conda, follow the following steps:
 
