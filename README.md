@@ -32,7 +32,7 @@ python ./linear_regression.py --data.results_folder="$FOLDER" --training.corr_sc
 
 `$POTENTIAL`: '2-norm', '3-norm' or 'negative_entropy'
 
-`$ND`: 0.5 or 0.75
+`$ND`: 0.5
 
 ```
 python ./finetuning.py \
