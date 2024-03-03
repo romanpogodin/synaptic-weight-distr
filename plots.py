@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.path import Path
 
-def finetuning_plots(results_folder):
+def finetuning_plots(results_folder, name_suffix=''):
     w = 1
     h = 0.2
     verts = [
@@ -53,8 +53,10 @@ def finetuning_plots(results_folder):
             range_data = np.load(results_folder + range_path)
             # same order as in data processing
             arch_list = ['efficientnet_b0', 'efficientnet_b1', 'efficientnet_b2', 'efficientnet_b3',
-                         'shufflenet_v2_x0_5', 'shufflenet_v2_x1_0', 'resnet18', 'resnet34']
-            arch_name = ['b0', 'b1', 'b2', 'b3', 'x0.5', 'x1', 'r18', 'r34']
+                         'shufflenet_v2_x0_5', 'shufflenet_v2_x1_0', 'resnet18', 'resnet34', 'cornet-s', 'cornet-rt']
+            if 'ssl' in name_suffix:
+                arch_list = ['resnet50']
+            arch_name = ['b0', 'b1', 'b2', 'b3', 'x0.5', 'x1', 'r18', 'r34', 'c-s', 'c-rt']
             for arch_idx, arch in enumerate(arch_list):
                 axes[idx].scatter(range_data[arch_idx] * np.ones(cdf_data.shape[0]),
                                   cdf_data[:, arch_idx], edgecolors=get_color(arch), facecolors='none',
@@ -74,20 +76,99 @@ def finetuning_plots(results_folder):
         # axes[0].legend(handles=handles)
         axes[0].set_yticks([0.0, 0.05, 0.1, 0.15, 0.2, 0.25])
 
+
         plt.tight_layout()
-        plt.savefig(f'finetuning_plots_uncentered_{nd}.pdf')
+        plt.savefig(f'finetuning_plots_uncentered_{nd}{name_suffix}.pdf')
         plt.show()
 
 
-def finetuning_plots_phi(results_folder):
+def finetuning_plots_rnn(results_folder):
+    w = 1
+    h = 0.2
+    verts = [
+        (-w, -h),  # left, bottom
+        (-w, h),  # left, top
+        (w, h),  # right, top
+        (w, -h),  # right, bottom
+        (-w, -h),  # back to left, bottom
+    ]
+
+    codes = [
+        Path.MOVETO,  # begin drawing
+        Path.LINETO,  # straight line
+        Path.LINETO,
+        Path.LINETO,
+        Path.CLOSEPOLY,  # close shape. This is not required for this shape but is "good form"
+    ]
+
+    path = Path(verts, codes)
+    potentials_name = ['negative entropy', '2-norm', '3-norm']
+
+    def get_color(arch):
+        # if 'efficient' in arch:
+        #     return '#AF3B3B'
+        # if 'shuffle' in arch:
+        #     return '#56B4E9'
+        return '#FD935E'
+
+    for nd  in ['0.50']:
+        fig, axes = plt.subplots(ncols=3, figsize=(15, 4), #sharey=True,
+                                 sharex=True)
+        for idx, potential in enumerate(['negative_entropy', '2-norm', '3-norm']):
+            other_potential = potential  # '2-norm'#potential#'negative_entropy'#'3-norm'
+            mag_path = f'{potential}_nd{nd}_xent0.00_change_magnitude_{other_potential}.npy'
+            cdf_path = f'{potential}_nd{nd}_xent0.00_density_mse_{other_potential}.npy'
+            range_path = f'{potential}_nd{nd}_xent0.00_D_range.npy'
+
+            #     magnitude_data = np.load(results_folder + mag_path)
+            cdf_data = np.load(results_folder + cdf_path)
+            range_data = np.load(results_folder + range_path)
+            # same order as in data processing
+            arch_list = [100, 1000]
+            arch_name = [100, 1000]
+            for arch_idx, arch in enumerate(arch_list):
+                axes[idx].scatter(range_data[arch_idx] * np.ones(cdf_data.shape[0]),
+                                  cdf_data[:, arch_idx], edgecolors=get_color(arch), facecolors='none',
+                                  s=200, alpha=0.5)
+                axes[idx].scatter(range_data[arch_idx], cdf_data[:, arch_idx].mean(),
+                                  marker=path, s=500, lw=2, facecolors=get_color(arch), edgecolors='k')
+                axes[idx].set_xscale('log')
+                axes[idx].set_xlabel('Number of weights')
+                axes[idx].set_ylim(0, 1.05 * cdf_data.max())
+                axes[idx].set_xlim(0.75 * range_data.min(), 1.5 * range_data.max())
+                axes[idx].set_title(potentials_name[idx])
+        axes[0].set_ylabel(r'$\Delta\mathrm{CDF}$')
+
+        handles = [mpatches.Patch(color=get_color('efficient'), label='EfficientNet'),
+                   mpatches.Patch(color=get_color('shuffle'), label='ShuffleNetv2'),
+                   mpatches.Patch(color=get_color('resnet'), label='ResNet')]
+        # axes[0].legend(handles=handles)
+
+        # axes[0].set_yticks([0.0, 0.05, 0.1, 0.15, 0.2, 0.25])
+
+        plt.tight_layout()
+        plt.savefig(f'finetuning_plots_uncentered_{nd}_rnn.pdf')
+        plt.show()
+
+
+
+def finetuning_plots_phi(results_folder, name_suffix=''):
     for nd in ['0.50']:
-        arch_idx_list = np.arange(8)
-        fig, axes = plt.subplots(ncols=len(arch_idx_list) // 2, nrows=2, figsize=(15, 6), sharey=True, sharex=True)
-        axes = axes.flatten()
+        arch_list = ['EfficientNet b0', 'EfficientNet b1', 'EfficientNet b2', 'EfficientNet b3',
+                     'ShuffleNet v2 x0.5', 'ShuffleNet v2 x1', 'ResNet18', 'ResNet34', 'CORNet-S', 'CORNet-RT']
+        if 'ssl' in name_suffix:
+            arch_list = ['resnet50']
+        arch_idx_list = np.arange(len(arch_list))
+
+        fig, axes = plt.subplots(ncols=max(1, len(arch_idx_list) // 2),
+                                 nrows=min(2, len(arch_list)),
+                                 figsize=(8 if len(arch_list) == 1 else 15, 6), sharey=True, sharex=True)
+        if len(arch_list) > 1:
+            axes = axes.flatten()
+        else:
+            axes = [axes]
 
         colors = ['#0072B2', '#009E73', '#D55E00']
-        arch_list = ['EfficientNet b0', 'EfficientNet b1', 'EfficientNet b2', 'EfficientNet b3',
-                     'ShuffleNet v2 x0.5', 'ShuffleNet v2 x1', 'ResNet18', 'ResNet34']
         potentials = ['negative_entropy', '2-norm', '3-norm']
         other_potentials = ['negative_entropy', '1.5-norm', '2-norm', '2.5-norm', '3-norm']
         potentials_name = ['negative entropy (NE)', '2-norm', '3-norm']
@@ -114,8 +195,49 @@ def finetuning_plots_phi(results_folder):
         axes[0].set_yticks([0.0, 0.2, 0.4, 0.6])
 
         plt.tight_layout()
-        plt.savefig(f'finetuning_diff_phi_{nd}.pdf')
+        plt.savefig(f'finetuning_diff_phi_{nd}{name_suffix}.pdf')
         plt.show()
+
+
+def finetuning_plots_phi_rnn(results_folder):
+    for nd in ['0.50']:
+
+        arch_list = [100, 1000]
+        arch_idx_list = np.arange(len(arch_list))
+        fig, axes = plt.subplots(ncols=2, nrows=len(arch_idx_list) // 2, figsize=(15, 6),# sharey=True,
+                                 sharex=True)
+        axes = axes.flatten()
+
+        colors = ['#0072B2', '#009E73', '#D55E00']
+        potentials = ['negative_entropy', '2-norm', '3-norm']
+        other_potentials = ['negative_entropy', '1.5-norm', '2-norm', '2.5-norm', '3-norm']
+        potentials_name = ['negative entropy (NE)', '2-norm', '3-norm']
+        potentials_name2 = ['NE', '2-norm', '3-norm']
+        other_potentials_names = ['NE', '1.5', '2', '2.5', '3']
+        for idx, arch_idx in enumerate(arch_idx_list):
+            for p_idx, potential in enumerate(potentials):
+                data = np.zeros((len(other_potentials), 10))
+                for op_idx, other_potential in enumerate(other_potentials):
+                    cdf_path = f'{potential}_nd{nd}_xent0.00_density_mse_{other_potential}.npy'
+                    data[op_idx, :] = np.load(results_folder + cdf_path)[:, arch_idx]
+
+                axes[idx].plot(data.mean(axis=1), color=colors[p_idx], label=f'{potentials_name2[p_idx]}',
+                               lw=4)
+                axes[idx].scatter(np.arange(len(other_potentials)).repeat(10),
+                                  data.flatten(), edgecolors=colors[p_idx], facecolors='none',
+                                  s=200, alpha=0.5)
+            axes[idx].set_title(arch_list[arch_idx])
+            axes[idx].set_xticks(np.arange(len(other_potentials_names)), other_potentials_names)
+        # axes[0].legend()
+        axes[0].set_ylabel(r'$\Delta\mathrm{CDF}$')
+        # axes[4].set_ylabel(r'$\Delta\mathrm{CDF}$')
+
+        # axes[0].set_yticks([0.0, 0.2, 0.4, 0.6])
+
+        plt.tight_layout()
+        plt.savefig(f'finetuning_diff_phi_{nd}_rnn.pdf')
+        plt.show()
+
 
 def linear_regression_plots(folder):
     corr_scale = 1
@@ -299,6 +421,10 @@ def main():
     sns.set(font_scale=1.5, style='ticks')
     finetuning_plots('finetuning_results/')
     finetuning_plots_phi('finetuning_results/')
+    finetuning_plots('finetuning_results_ssl/', name_suffix='_ssl')
+    finetuning_plots_phi('finetuning_results_ssl/', name_suffix='_ssl')
+    finetuning_plots_rnn('rnn_results/')
+    finetuning_plots_phi_rnn('rnn_results/')
     linear_regression_plots('linreg_results/')
     robustness_plots()
 

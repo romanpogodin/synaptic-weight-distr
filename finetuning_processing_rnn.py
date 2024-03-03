@@ -3,6 +3,7 @@ import math
 from scipy.special import erf
 import md_utils
 import torch
+
 import os
 from pathlib import Path
 from argparse import ArgumentParser
@@ -69,7 +70,14 @@ def find_ratio_cdf_mse(n_seeds, arch_list, potential, other_potential, n_d_depen
 
             empirical_cdf = torch.zeros_like(points_for_normal)
 
-            chunk_size = 200
+            # chunk_size = 1000 if arch not in ['resnet34', 'resnet50'] else 500
+            # for i in range(len(points_for_normal) // chunk_size):
+            #     empirical_cdf[chunk_size * i:chunk_size * (i + 1)] = \
+            #         (points_for_normal[chunk_size * i:chunk_size * (i + 1), None] > diff[None, :]).mean(axis=-1)
+
+            # split in half
+            # empirical_cdf = (points_for_normal[:, None] > diff[None, :]).float().mean(axis=-1)
+            chunk_size = 50#200
             for i in range(len(points_for_normal) // chunk_size):
                 empirical_cdf[chunk_size * i:chunk_size * (i + 1)] = \
                     (points_for_normal[chunk_size * i:chunk_size * (i + 1), None] > diff[None, :]).float().mean(axis=-1)
@@ -88,13 +96,15 @@ def main(results_folder):
     potential_list = [md_utils.Pnorm(2), md_utils.NegativeEntropy(), md_utils.Pnorm(3)]
     other_potential_list = [md_utils.Pnorm(2), md_utils.NegativeEntropy(), md_utils.Pnorm(3),
                             md_utils.Pnorm(1.5), md_utils.Pnorm(2.5)]
-    arch_list = ['efficientnet_b0', 'efficientnet_b1', 'efficientnet_b2', 'efficientnet_b3',
-                 'shufflenet_v2_x0_5', 'shufflenet_v2_x1_0', 'resnet18', 'resnet34', 'cornet-s', 'cornet-rt']
-    n_d_list = [0.5]
+    arch_list = [100, 1000]
+    n_d_list = [0.5]#, 0.75]
+    # xent_penalty_list = [0]#, 0.01]
     xent_penalty = 0
 
     for potential in potential_list:
         for n_d_dependency in n_d_list:
+            # for xent_penalty in xent_penalty_list:
+            # other_potential = potential
             for other_potential in other_potential_list:
                 print(f'{potential.name}, {n_d_dependency}, {xent_penalty} calculated for {other_potential.name}',
                       flush=True)
@@ -111,9 +121,10 @@ def main(results_folder):
                 np.save(os.path.join(results_folder, filename_prefix + f'_D_range'), D_range)
 
 
+
 def make_config(quiet=False):
     config = get_current_config()
-    parser = ArgumentParser(description='Finetuning processing')
+    parser = ArgumentParser(description='Fast imagenet training')
     config.augment_argparse(parser)
     config.collect_argparse_args(parser)
     config.validate(mode='stderr')
