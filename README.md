@@ -1,3 +1,11 @@
+This is a repostitory for the ICLR 2024 paper
+
+Synaptic Weight Distributions Depend on the Geometry of Plasticity Authors
+
+Roman Pogodin*, Jonathan Cornford*, Arna Ghosh, Gauthier Gidel, Guillaume Lajoie, Blake Richards
+
+https://arxiv.org/pdf/2305.19394.pdf
+
 # Setup (with conda)
 To install using conda, follow the following steps:
 
